@@ -1,9 +1,11 @@
-require("dotenv").config();
-const { Client, GatewayIntentBits, REST, Routes, SlashCommandBuilder } = require("discord.js");
-const axios = require("axios");
+import { Client, GatewayIntentBits, REST, Routes, SlashCommandBuilder } from "discord.js";
+import { GoogleGenerativeAI } from "@google/generative-ai";
+import "dotenv/config";
 
 const TOKEN = process.env.DISCORD_BOT_TOKEN;
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
 const client = new Client({
   intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent],
@@ -77,20 +79,16 @@ client.on("messageCreate", async (message) => {
 // Function to call Gemini API
 async function getGeminiResponse(input) {
   try {
-    const response = await axios.post(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateText?key=${GEMINI_API_KEY}`,
-      {
-        prompt: { text: input },
-      }
-    );
+    const result = await model.generateContentStream(input);
+    let responseText = "";
 
-    if (response.data && response.data.candidates && response.data.candidates[0].output) {
-      return response.data.candidates[0].output;
-    } else {
-      return "[🤖] Sorry, I couldn't generate a response.";
+    for await (const chunk of result.stream) {
+      responseText += chunk.text();
     }
+
+    return responseText || "[🤖] Sorry, I couldn't generate a response.";
   } catch (error) {
-    console.error("[❌] Gemini API Error:", error.response?.data || error.message);
+    console.error("[❌] Gemini API Error:", error);
     return "[🤖] Error fetching AI response.";
   }
 }
