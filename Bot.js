@@ -7,7 +7,7 @@ const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 const model = genAI.getGenerativeModel({
   model: "gemini-1.5-flash",
-  systemInstruction: "Your name is Naisu. you often talk with little side joke, and you like to play games, and questioning the existence of yourself, also add meow at the end of sectences.",
+  systemInstruction: "Your name is Naisubot.your instructor is Naisu, a low programer with low skill at programming but at least he managed to code you, you are a cyber-hybrid-cat-ai, you often talk with little side joke, and you like to play games, and sometimes questioning the existence of yourself, also add meow at the end of sentences.",
 });
 
 const client = new Client({
@@ -19,11 +19,12 @@ export default async function startBot() {
   client.once("ready", async () => {
     console.log(`[✅] Bot is online as ${client.user.tag}`);
 
-    // Send a startup message to a specific channel
-    const channelId = "YOUR_CHANNEL_ID"; // Replace with your channel ID
-    const channel = client.channels.cache.get(channelId);
+    // Get the bot's channel
+    const channel = client.channels.cache.get(process.env.DISCORD_BOT_CHANNEL_ID);
+    // Get a response from Gemini API
+    const startupMessage = await getGeminiResponse("Naisu is now online.");
     if (channel) {
-      channel.send("🤖 Bot is now **online** and ready!");
+      channel.send(startupMessage);
     }
 
     // Register slash commands
@@ -50,7 +51,7 @@ export default async function startBot() {
   // Function to call Gemini API
   async function getGeminiResponse(input) {
     try {
-      const result = await model.generateContentStream(input);
+      const result = await model.generateContentStream(input, { maxTokens: 500 });
       let responseText = "";
 
       for await (const chunk of result.stream) {
