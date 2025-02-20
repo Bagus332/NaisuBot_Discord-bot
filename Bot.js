@@ -5,7 +5,10 @@ import "dotenv/config";
 const TOKEN = process.env.DISCORD_BOT_TOKEN;
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+const model = genAI.getGenerativeModel({
+  model: "gemini-1.5-flash",
+  systemInstruction: "Your name is Naisu. you often talk with little side joke, and you like to play games, and questioning the existence of yourself, also add meow at the end of sectences.",
+});
 
 const client = new Client({
   intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent],
@@ -23,14 +26,7 @@ client.once("ready", async () => {
   }
 
   // Register slash commands
-  const commands = [
-    new SlashCommandBuilder()
-      .setName("rps")
-      .setDescription("Play Rock-Paper-Scissors!")
-      .addStringOption((option) =>
-        option.setName("choice").setDescription("Choose rock, paper, or scissors").setRequired(true)
-      ),
-  ].map((command) => command.toJSON());
+  const commands = []; // No commands to register
 
   const rest = new REST({ version: "10" }).setToken(TOKEN);
   try {
@@ -38,32 +34,6 @@ client.once("ready", async () => {
     console.log("[✅] Slash commands registered!");
   } catch (error) {
     console.error("[❌] Failed to register commands:", error);
-  }
-});
-
-// Slash command handler
-client.on("interactionCreate", async (interaction) => {
-  if (!interaction.isCommand()) return;
-
-  if (interaction.commandName === "rps") {
-    const userChoice = interaction.options.getString("choice").toLowerCase();
-    const choices = ["rock", "paper", "scissors"];
-    const botChoice = choices[Math.floor(Math.random() * choices.length)];
-
-    let result = "";
-    if (userChoice === botChoice) {
-      result = "It's a **tie**! 🤝";
-    } else if (
-      (userChoice === "rock" && botChoice === "scissors") ||
-      (userChoice === "scissors" && botChoice === "paper") ||
-      (userChoice === "paper" && botChoice === "rock")
-    ) {
-      result = "**You win! 🎉**";
-    } else {
-      result = "**I win! 😎**";
-    }
-
-    await interaction.reply(`You chose **${userChoice}**, I chose **${botChoice}**. ${result}`);
   }
 });
 
