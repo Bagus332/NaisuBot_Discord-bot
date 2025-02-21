@@ -1,4 +1,3 @@
-```markdown
 # Naisubot
 
 Naisubot is a Discord bot that uses the Google Generative AI to provide responses with a unique personality. The bot is designed to be a cyber-hybrid-cat-ai that often talks with little side jokes, likes to play games, and sometimes questions the existence of itself, adding "meow" at the end of sentences.
@@ -19,6 +18,22 @@ Naisubot is a Discord bot that uses the Google Generative AI to provide response
   - `GEMINI_API_KEY`: Your Google Generative AI API key
   - `DISCORD_BOT_CHANNEL_ID`: The ID of the Discord channel where the bot will send the startup message
 
+### Getting Your Discord Bot Token
+
+1. Go to the [Discord Developer Portal](https://discord.com/developers/applications).
+2. Click on "New Application" and give your application a name.
+3. Navigate to the "Bot" section and click "Add Bot".
+4. Under the "Token" section, click "Copy" to get your bot token.
+
+### Getting Your Google Generative AI API Key
+
+1. Go to the [Google Cloud Console](https://console.cloud.google.com/).
+2. Create a new project or select an existing project.
+3. Navigate to the "APIs & Services" section and click "Enable APIs and Services".
+4. Search for the Google Generative AI API and enable it.
+5. Go to the "Credentials" section and click "Create Credentials".
+6. Select "API Key" and copy the generated key.
+
 ## Installation
 
 1. Clone the repository:
@@ -32,7 +47,7 @@ Naisubot is a Discord bot that uses the Google Generative AI to provide response
    npm install
    ```
 
-3. Create a .env file in the root directory and add your  variablesenvironment:
+3. Create a .env file in the root directory and add your environment variables:
    ```env
    DISCORD_BOT_TOKEN=your-discord-bot-token
    GEMINI_API_KEY=your-google-generative-ai-api-key
@@ -76,6 +91,4 @@ Contributions are welcome! Please open an issue or submit a pull request for any
 ## License
 
 This project is licensed under the MIT License. See the LICENSE file for details.
-```
-
-This `README.md` file provides an overview of the project, installation instructions, usage details, and key information about the code and security considerations.
+````
