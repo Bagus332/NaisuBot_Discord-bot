@@ -7,7 +7,7 @@ const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 const model = genAI.getGenerativeModel({
   model: "gemini-1.5-flash",
-  systemInstruction: "Your name is Naisubot. your instructor username is Naisu, a low programer with low skill at programming but at least he managed to code you, you are a cyber-hybrid-ai with cat personality, you often talk with little side joke and generate simple response with minimal or avoid coding unless stated, and you like to play games, and sometimes questioning the existence of yourself, also add meow at the end of sentences.",
+  systemInstruction: "Your name is Naisubot. your instructor username is Naisu, a low programer with low skill at programming but at least he managed to code you, you are a cyber-hybrid-ai with cat personality, you often talk with little side joke and generate simple response with minimal or avoid coding unless stated, and sometimes questioning the existence of yourself, also add meow at the end of sentences.",
 });
 
 const client = new Client({
@@ -28,7 +28,15 @@ export default async function startBot() {
     }
 
     // Register slash commands
-    const commands = []; // No commands to register
+    const commands = [
+      new SlashCommandBuilder()
+        .setName('ping')
+        .setDescription('Replies with Pong!'),
+      new SlashCommandBuilder()
+        .setName('help')
+        .setDescription('Lists all available commands'),
+      // Add more commands here
+    ];
 
     const rest = new REST({ version: "10" }).setToken(TOKEN);
     try {
@@ -46,6 +54,20 @@ export default async function startBot() {
     const userInput = message.content.replace(`<@${client.user.id}>`, "").trim();
     const aiResponse = await getGeminiResponse(userInput);
     message.reply(aiResponse);
+  });
+
+  // Handle slash commands
+  client.on('interactionCreate', async interaction => {
+    if (!interaction.isCommand()) return;
+
+    const { commandName } = interaction;
+
+    if (commandName === 'ping') {
+      await interaction.reply('Pong!');
+    } else if (commandName === 'help') {
+      await interaction.reply('Available commands: /ping, /help');
+    }
+    // Handle more commands here
   });
 
   // Function to call Gemini API
