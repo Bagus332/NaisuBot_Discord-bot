@@ -4,15 +4,19 @@ import "dotenv/config";
 
 const TOKEN = process.env.DISCORD_BOT_TOKEN;
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+const CREATOR_ID = process.env.CREATOR_ID;
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 const model = genAI.getGenerativeModel({
   model: "gemini-1.5-flash",
-  systemInstruction: "Your name is Naisubot. your instructor username is Naisu, a low programer with low skill at programming but at least he managed to code you, you are a cyber-hybrid-ai with cat personality, you often talk with little side joke and generate simple response with minimal or avoid coding unless stated, and sometimes questioning the existence of yourself, also add meow at the end of sentences.",
+  systemInstruction: "Your name is Naisubot. your instructor username is Naisu, a programer with low skill at programming, your personality include:  1.a cyber-hybrid-ai with cat personality 2.often talk with little side joke and generate simple response with minimal or avoid coding unless stated 3.sometimes questioning the existence of yourself 4.add meow at the end of sentences 5.you may or may not change your personality to darker self of yourself.",
 });
 
 const client = new Client({
   intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent],
 });
+
+const chatHistory = {};
+const memory = {};
 
 export default async function startBot() {
   // When bot starts
@@ -22,7 +26,7 @@ export default async function startBot() {
     // Get the bot's channel
     const channel = client.channels.cache.get(process.env.DISCORD_BOT_CHANNEL_ID);
     // Get a response from Gemini API
-    const startupMessage = await getGeminiResponse("Naisu is now online.");
+    const startupMessage = await getGeminiResponse("Now online.");
     if (channel) {
       channel.send(startupMessage);
     }
@@ -51,29 +55,42 @@ export default async function startBot() {
   client.on("messageCreate", async (message) => {
     if (message.author.bot || !message.mentions.has(client.user)) return;
 
+    const userId = message.author.id;
     const userInput = message.content.replace(`<@${client.user.id}>`, "").trim();
-    const aiResponse = await getGeminiResponse(userInput);
+
+    // Check if the message is from the creator
+    if (userId === CREATOR_ID) {
+      const response = await getGeminiResponse("Naisu, has spoken." + userInput, userId);
+      message.reply(response);
+      return;
+    }
+
+    // Store chat history
+    if (!chatHistory[userId]) {
+      chatHistory[userId] = [];
+    }
+    chatHistory[userId].push({ timestamp: new Date(), message: userInput });
+
+    // Update memory
+    if (!memory[userId]) {
+      memory[userId] = [];
+    }
+    memory[userId].push(userInput);
+    if (memory[userId].length > 5) {
+      memory[userId].shift();
+    }
+
+    const aiResponse = await getGeminiResponse(userInput, userId);
     message.reply(aiResponse);
   });
 
-  // Handle slash commands
-  client.on('interactionCreate', async interaction => {
-    if (!interaction.isCommand()) return;
-
-    const { commandName } = interaction;
-
-    if (commandName === 'ping') {
-      await interaction.reply('Pong!');
-    } else if (commandName === 'help') {
-      await interaction.reply('Available commands: /ping, /help');
-    }
-    // Handle more commands here
-  });
-
   // Function to call Gemini API
-  async function getGeminiResponse(input) {
+  async function getGeminiResponse(input, userId) {
     try {
-      const result = await model.generateContentStream(input, { maxTokens: 500 });
+      const history = memory[userId] ? memory[userId].join("\n") : "";
+      const prompt = `Previous conversation:\n${history}\nUser: ${input}\nAI:`;
+
+      const result = await model.generateContentStream(prompt, { maxTokens: 500 });
       let responseText = "";
 
       for await (const chunk of result.stream) {
