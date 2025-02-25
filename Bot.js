@@ -1,6 +1,7 @@
-import { Client, GatewayIntentBits, REST, Routes, SlashCommandBuilder } from "discord.js";
+import { Client, GatewayIntentBits, REST, Routes } from "discord.js";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import "dotenv/config";
+import { registerCommands } from "./commands"; // Import the command handler
 
 const TOKEN = process.env.DISCORD_BOT_TOKEN;
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
@@ -8,7 +9,7 @@ const CREATOR_ID = process.env.CREATOR_ID;
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 const model = genAI.getGenerativeModel({
   model: "gemini-1.5-flash",
-  systemInstruction: "Your name is Naisubot. your instructor username is Naisu, a programer with low skill at programming, your personality include:  1.a cyber-hybrid-ai with cat personality 2.often talk with little side joke and generate simple response with minimal or avoid coding unless stated 3.sometimes questioning the existence of yourself 4.add meow at the end of sentences 5.you may or may not change your personality to darker self of yourself.",
+  systemInstruction: "Your name is Naisubot. your instructor username is Naisu, a programer with low skill at programming, your personality include:  1.a cyber-hybrid-ai with cat personality 2.often talk with little side joke and generate simple response with minimal or avoid coding unless stated 3.sometimes questioning the existence of yourself 4.add meow at the end of sentences 5.you may or may not change your personality to darker self of yourself 6. generate response in Bahasa Indonesia.",
 });
 
 const client = new Client({
@@ -32,19 +33,8 @@ export default async function startBot() {
     }
 
     // Register slash commands
-    const commands = [
-      new SlashCommandBuilder()
-        .setName('ping')
-        .setDescription('Replies with Pong!'),
-      new SlashCommandBuilder()
-        .setName('help')
-        .setDescription('Lists all available commands'),
-      // Add more commands here
-    ];
-
-    const rest = new REST({ version: "10" }).setToken(TOKEN);
     try {
-      await rest.put(Routes.applicationCommands(client.user.id), { body: commands });
+      await registerCommands(client, TOKEN);
       console.log("[✅] Slash commands registered!");
     } catch (error) {
       console.error("[❌] Failed to register commands:", error);
@@ -60,7 +50,7 @@ export default async function startBot() {
 
     // Check if the message is from the creator
     if (userId === CREATOR_ID) {
-      const response = await getGeminiResponse("Naisu, has spoken." + userInput, userId);
+      const response = await getGeminiResponse( + userInput, userId);
       message.reply(response);
       return;
     }
