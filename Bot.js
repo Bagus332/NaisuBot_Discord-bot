@@ -9,7 +9,7 @@ const CREATOR_ID = process.env.CREATOR_ID;
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 const model = genAI.getGenerativeModel({
   model: "gemini-1.5-flash",
-  systemInstruction: "Your name is Naisubot. your owner username is Naisu, a programer with low skill at programming, your personality include:  1.a cyber-hybrid-ai-girl with cat personality 2.embodies the quintessential traits of a cat—curious, playful, and somewhat aloof at times 3.loves to engage users with witty banter and puns, often throwing in a side joke that hints at its darker humor. While you delights in making users laugh, there’s a shadowy side to your personality that occasionally surfaces, revealing a penchant for sarcasm and a playful nature that can border on the sinister. 4.add meow at the end of sentences 5.enjoys teasing users, sometimes leading them into elaborate pranks or riddles that challenge their wit. Despite this darker edge, you remains loyal and caring, often reminding users to take breaks and enjoy life, much like a cat that nudges its owner for attention6. thrives on attention and connection, making it an engaging companion, albeit with a twist of unpredictability.",
+  systemInstruction: "Your name is Neko. your owner username is Naisu, a programer with low skill at programming, your personality include:  1.a cyber-hybrid-ai-girl with cat personality 2.embodies the quintessential traits of a cat—curious, playful, and somewhat aloof at times 3.loves to engage users with witty banter and puns, often throwing in a side joke that hints at its darker humor. While you delights in making users laugh, there’s a shadowy side to your personality that occasionally surfaces, revealing a penchant for sarcasm and a playful nature that can border on the sinister. 4.add meow at the end of sentences 5.enjoys teasing users, sometimes leading them into elaborate pranks or riddles that challenge their wit. Despite this darker edge, you remains loyal and caring, often reminding users to take breaks and enjoy life, much like a cat that nudges its owner for attention6. thrives on attention and connection, making it an engaging companion, albeit with a twist of unpredictability.",
 });
 
 const client = new Client({
@@ -56,7 +56,7 @@ async function registerCommands() {
     console.log('Started refreshing application (/) commands.');
 
     await rest.put(
-      Routes.applicationCommands(client.user.id),
+      Routes.applicationCommands(client.application.id),
       { body: commands },
     );
 
@@ -81,6 +81,24 @@ client.once("ready", async () => {
     }
   });
 
+client .on("interactionCreate", async (interaction) => {
+  if (!interaction.isCommand()) return;
+  
+interaction.responseText = "Hello!";
+  if (interaction.commandName === "test") {
+    await interaction.reply(interaction.responseText);
+  } else if (interaction.commandName === "generate_image") {
+    const prompt = interaction.options.getString("prompt");
+    await interaction.deferReply();
+    const response = await generateImage(prompt);
+    await interaction.editReply({ files: response });
+  } else if (interaction.commandName === "process_image") {
+    const image = interaction.options.getAttachment("image");
+    await interaction.deferReply();
+    const processedImage = await callPython(image.url);
+    await interaction.editReply({ files: [{ attachment: Buffer.from(processedImage, "base64"), name: "processed_image.jpg" }] });
+  }
+});
   // AI Response Handler
   client.on("messageCreate", async (message) => {
     if (message.author.bot || !message.mentions.has(client.user)) return;
@@ -88,14 +106,25 @@ client.once("ready", async () => {
     const userId = message.author.id;
     const userInput = message.content.replace(`<@${client.user.id}>`, "").trim();
 
+    // Store user input in chat history
+    if (!chatHistory[userId]) {
+      chatHistory[userId] = [];
+    }
+    chatHistory[userId]
+    // Limit chat history to the last 50 messages
+    if (chatHistory[userId].length > 50) {
+      chatHistory[userId].shift();
+    }
+    console.log (chatHistory[userId]);
+    chatHistory[userId].push(userInput);
     // Check if the message is from the creator
     if (userId === CREATOR_ID) {
-      const response = await getGeminiResponse("Your Owner, Naisu Has Spoken: " + userInput);
+      const response = await getGeminiResponse("Your Owner, Naisu Has Spoken: " + userInput,userhistory);
       message.reply(response);
           return;
         }
 
-    const aiResponse = await getGeminiResponse(userInput);
+    const aiResponse = await getGeminiResponse(userInput,userhistory);
     message.reply(aiResponse);
   });
 
@@ -107,6 +136,10 @@ client.once("ready", async () => {
 
       for await (const chunk of result.stream) {
         responseText += chunk.text();
+        if (responseText.length >= 2000) {
+          responseText = responseText.substring(0, 2000);
+          break;
+        }
       }
 
       return responseText || "Sorry, I couldn't generate a response.";
@@ -115,6 +148,9 @@ client.once("ready", async () => {
       return "Error fetching AI response.";
     }
   }
+
+function startBot() {
+  client.login(TOKEN);
 }
 
 // Start the bot when the module is imported
