@@ -23,29 +23,29 @@ const rest = new REST({ version: '10' }).setToken(TOKEN);
 async function registerCommands() {
   const commands = [
     {
-      name: 'test',
-      description: 'Replies with a test message!',
+      name: "test",
+      description: "Replies with a test message!",
     },
     {
-      name: 'generate_image',
-      description: 'Generates an image based on the provided prompt',
+      name: "generate_image",
+      description: "Generates an image based on the provided prompt",
       options: [
         {
           type: 3, // String type
-          name: 'prompt',
-          description: 'The prompt for generating the image',
+          name: "prompt",
+          description: "The prompt for generating the image",
           required: true,
         },
       ],
     },
     {
-      name: 'process_image',
-      description: 'Processes an uploaded image',
+      name: "process_image",
+      description: "Processes an uploaded image",
       options: [
         {
           type: 11, // Attachment type
-          name: 'image',
-          description: 'The image to process',
+          name: "image",
+          description: "The image to process",
           required: true,
         },
       ],
@@ -53,18 +53,22 @@ async function registerCommands() {
   ];
 
   try {
-    console.log('Started refreshing application (/) commands.');
+    console.log("Started refreshing application (/) commands.");
 
     await rest.put(
-      Routes.applicationCommands(client.application.id),
-      { body: commands },
+      Routes.applicationCommands(client.user.id), // <-- Ensure client.user.id is used instead of client.application.id
+      { body: commands }
     );
 
-    console.log('Successfully reloaded application (/) commands.');
+    console.log("Successfully reloaded application (/) commands.");
   } catch (error) {
     console.error(error);
   }
 }
+
+client.on("interactionCreate", (interaction) => {
+  console.log(`[🛠] Received interaction: ${interaction.commandName}`);
+});
 
 client.once("ready", async () => {
   console.log(`[✅] Bot is online as ${client.user.tag}`);
@@ -82,22 +86,26 @@ client.once("ready", async () => {
   });
 
 client .on("interactionCreate", async (interaction) => {
-  if (!interaction.isCommand()) return;
+  if (!interaction.isChatInputCommand()) return;
   
-interaction.responseText = "Hello!";
   if (interaction.commandName === "test") {
-    await interaction.reply(interaction.responseText);
+  await interaction.reply("Hello!");
+
   } else if (interaction.commandName === "generate_image") {
-    const prompt = interaction.options.getString("prompt");
-    await interaction.deferReply();
-    const response = await generateImage(prompt);
-    await interaction.editReply({ files: response });
-  } else if (interaction.commandName === "process_image") {
-    const image = interaction.options.getAttachment("image");
-    await interaction.deferReply();
-    const processedImage = await callPython(image.url);
-    await interaction.editReply({ files: [{ attachment: Buffer.from(processedImage, "base64"), name: "processed_image.jpg" }] });
+  const prompt = interaction.options.getString("prompt");
+  await interaction.deferReply();
+  
+  const response = await generateImage(prompt);
+  if (!response) {
+    return interaction.editReply("Failed to generate the image.");
   }
+  await interaction.editReply({ files: response });
+  }
+  
+  console.log(interaction);
+  console.log(`[📥] Interaction received: ${interaction.commandName}`);
+  
+
 });
   // AI Response Handler
   client.on("messageCreate", async (message) => {
@@ -130,24 +138,16 @@ interaction.responseText = "Hello!";
 
   // Function to call Gemini API
   async function getGeminiResponse(input) {
-    try {
-      const result = await model.generateContentStream(input, { maxTokens: 500 });
-      let responseText = "";
-
-      for await (const chunk of result.stream) {
-        responseText += chunk.text();
-        if (responseText.length >= 2000) {
-          responseText = responseText.substring(0, 2000);
-          break;
-        }
-      }
-
-      return responseText || "Sorry, I couldn't generate a response.";
-    } catch (error) {
-      console.error("Gemini API Error:", error);
-      return "Error fetching AI response.";
-    }
+  try {
+    const result = await model.generateContent({
+      contents: [{ role: "user", parts: [{ text: input }] }],
+    });
+    return result.response.text() || "Sorry, I couldn't generate a response.";
+  } catch (error) {
+    console.error("Gemini API Error:", error);
+    return "Error fetching AI response.";
   }
+}
 
 function startBot() {
   client.login(TOKEN);
