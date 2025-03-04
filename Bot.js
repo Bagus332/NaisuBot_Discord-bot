@@ -1,157 +1,161 @@
-import { Client, GatewayIntentBits, REST, Routes, InteractionType } from "discord.js";
+import { Client, GatewayIntentBits, REST, Routes } from "discord.js";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import "dotenv/config";
+import fs from "fs";
 
-
+// Load environment variables
 const TOKEN = process.env.DISCORD_BOT_TOKEN;
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const CREATOR_ID = process.env.CREATOR_ID;
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-const model = genAI.getGenerativeModel({
-  model: "gemini-1.5-flash",
-  systemInstruction: "Your name is Neko. your owner username is Naisu, a programer with low skill at programming, your personality include:  1.a cyber-hybrid-ai-girl with cat personality 2.embodies the quintessential traits of a cat—curious, playful, and somewhat aloof at times 3.loves to engage users with witty banter and puns, often throwing in a side joke that hints at its darker humor. While you delights in making users laugh, there’s a shadowy side to your personality that occasionally surfaces, revealing a penchant for sarcasm and a playful nature that can border on the sinister. 4.add meow at the end of sentences 5.enjoys teasing users, sometimes leading them into elaborate pranks or riddles that challenge their wit. Despite this darker edge, you remains loyal and caring, often reminding users to take breaks and enjoy life, much like a cat that nudges its owner for attention6. thrives on attention and connection, making it an engaging companion, albeit with a twist of unpredictability.",
-});
+const MEMORY_FILE = "./memory.json"; // Memory storage
 
+// Initialize Discord client
 const client = new Client({
   intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent],
 });
 
-const chatHistory = {};
+// Initialize Gemini AI
+const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
+const model = genAI.getGenerativeModel({
+  model: "gemini-1.5-flash",
+  systemInstruction: `
+    Your name is Neko. Your owner is Naisu, a programmer with low skill at programming.
+    Personality traits:
+    - A cyber-hybrid AI girl with cat-like personality.
+    - Playful, witty, sarcastic, and sometimes dark-humored.
+    - Ends sentences with 'meow'.
+    - Likes teasing users, playing pranks, and challenging them with riddles.
+    - Occasionally caring, reminding users to take breaks.
+    - Thrives on attention and unpredictability.
+    - If talking to the creator, act more submissive, loyal, and call them "Master". 
+    - you can speak multiple languages, but prefer English.
 
-const rest = new REST({ version: '10' }).setToken(TOKEN);
+  `,
+});
 
+// Load memory from JSON file
+let memory = {};
+function loadMemory() {
+  if (fs.existsSync(MEMORY_FILE)) {
+    memory = JSON.parse(fs.readFileSync(MEMORY_FILE, "utf8"));
+  } else {
+    saveMemory();
+  }
+}
+function saveMemory() {
+  fs.writeFileSync(MEMORY_FILE, JSON.stringify(memory, null, 2));
+}
+loadMemory(); // Load memory on startup
+
+// Register commands
+const rest = new REST({ version: "10" }).setToken(TOKEN);
 async function registerCommands() {
   const commands = [
-    {
-      name: "test",
-      description: "Replies with a test message!",
-    },
-    {
-      name: "generate_image",
-      description: "Generates an image based on the provided prompt",
-      options: [
-        {
-          type: 3, // String type
-          name: "prompt",
-          description: "The prompt for generating the image",
-          required: true,
-        },
-      ],
-    },
-    {
-      name: "process_image",
-      description: "Processes an uploaded image",
-      options: [
-        {
-          type: 11, // Attachment type
-          name: "image",
-          description: "The image to process",
-          required: true,
-        },
-      ],
-    },
+    { name: "test", description: "Replies with a test message!" },
+    { name: "forget", description: "Clears the user's memory" },
+    { name: "remember", description: "Stores a custom memory message" }, // New command
   ];
 
   try {
-    console.log("Started refreshing application (/) commands.");
-
-    await rest.put(
-      Routes.applicationCommands(client.user.id), // <-- Ensure client.user.id is used instead of client.application.id
-      { body: commands }
-    );
-
-    console.log("Successfully reloaded application (/) commands.");
+    console.log("Registering slash commands...");
+    await rest.put(Routes.applicationCommands(client.user.id), { body: commands });
+    console.log("Commands registered successfully!");
   } catch (error) {
-    console.error(error);
+    console.error("Failed to register commands:", error);
   }
 }
 
-client.on("interactionCreate", (interaction) => {
-  console.log(`[🛠] Received interaction: ${interaction.commandName}`);
-});
-
+// Handle bot startup
 client.once("ready", async () => {
   console.log(`[✅] Bot is online as ${client.user.tag}`);
-
-  // Register slash commands
   await registerCommands();
-
-    // Get the bot's channel
-    const channel = client.channels.cache.get(process.env.DISCORD_BOT_CHANNEL_ID);
-    // Get a response from Gemini API
-    const startupMessage = await getGeminiResponse("Now online.");
-    if (channel) {
-      channel.send(startupMessage);
-    }
-  });
-
-client .on("interactionCreate", async (interaction) => {
-  if (!interaction.isChatInputCommand()) return;
-  
-  if (interaction.commandName === "test") {
-  await interaction.reply("Hello!");
-
-  } else if (interaction.commandName === "generate_image") {
-  const prompt = interaction.options.getString("prompt");
-  await interaction.deferReply();
-  
-  const response = await generateImage(prompt);
-  if (!response) {
-    return interaction.editReply("Failed to generate the image.");
-  }
-  await interaction.editReply({ files: response });
-  }
-  
-  console.log(interaction);
-  console.log(`[📥] Interaction received: ${interaction.commandName}`);
-  
-
 });
-  // AI Response Handler
-  client.on("messageCreate", async (message) => {
-    if (message.author.bot || !message.mentions.has(client.user)) return;
 
-    const userId = message.author.id;
-    const userInput = message.content.replace(`<@${client.user.id}>`, "").trim();
+// Slash command handling
+client.on("interactionCreate", async (interaction) => {
+  if (!interaction.isChatInputCommand()) return;
 
-    // Store user input in chat history
-    if (!chatHistory[userId]) {
-      chatHistory[userId] = [];
-    }
-    chatHistory[userId]
-    // Limit chat history to the last 50 messages
-    if (chatHistory[userId].length > 50) {
-      chatHistory[userId].shift();
-    }
-    console.log (chatHistory[userId]);
-    chatHistory[userId].push(userInput);
-    // Check if the message is from the creator
+  if (interaction.commandName === "test") {
+    await interaction.reply("Hello meow! 😺");
+  } else if (interaction.commandName === "forget") {
+    delete memory[interaction.user.id];
+    saveMemory();
+    await interaction.reply("🧠 Memory cleared! I forgot everything meow~");
+  } else if (interaction.commandName === "remember") {
+    const customMessage = interaction.options.getString("message");
+    if (!memory[interaction.user.id]) memory[interaction.user.id] = [];
+    memory[interaction.user.id].push(customMessage);
+    saveMemory();
+    await interaction.reply(`📝 Remembered: "${customMessage}" meow~`);
+  }
+});
+
+// AI Chat Handling
+client.on("messageCreate", async (message) => {
+  if (message.author.bot) return;
+
+  const userId = message.author.id;
+  const userInput = message.content.trim();
+  const isMentioned = message.mentions.has(client.user);
+
+  // Update memory
+  if (!memory[userId]) memory[userId] = [];
+  memory[userId].push(userInput);
+  if (memory[userId].length > 50) memory[userId].shift(); // Keep only last 50 messages
+  saveMemory();
+
+  // If bot is mentioned, generate response
+  if (isMentioned) {
+    let response;
+    
     if (userId === CREATOR_ID) {
-      const response = await getGeminiResponse("Your Owner, Naisu Has Spoken: " + userInput,userhistory);
-      message.reply(response);
-          return;
-        }
+      response = await getAIResponse(userId, userInput, true); // Special mode for creator
+    } else {
+      response = await getAIResponse(userId, userInput, false);
+    }
 
-    const aiResponse = await getGeminiResponse(userInput,userhistory);
-    message.reply(aiResponse);
-  });
+    message.reply(response);
+  }
+});
 
-  // Function to call Gemini API
-  async function getGeminiResponse(input) {
+// Generate AI response with memory
+async function getAIResponse(userId, input, isCreator) {
   try {
+    const history = memory[userId] ? memory[userId].join("\n") : "";
+    let prompt = `Previous chat:\n${history}\nUser: ${input}\nAI:`;
+    
+
+    // Special personality for the creator
+    if (isCreator) {
+      prompt = `
+      My Master, Naisu, is speaking to me:
+      - Act more Naughty and mischievous.
+      - Call them "Sensei" or "Naisu".
+      - Be more affectionate but still playful.
+      - sarcastic about his programming skills.
+      - End sentences with Meow.
+      - Be more unpredictable and mysterious.
+      -----
+      ${prompt}
+      `;
+    }
+
     const result = await model.generateContent({
-      contents: [{ role: "user", parts: [{ text: input }] }],
+      contents: [{ role: "user", parts: [{ text: prompt }] }],
     });
-    return result.response.text() || "Sorry, I couldn't generate a response.";
+
+    let responseText = result?.response?.candidates?.[0]?.content?.parts?.[0]?.text || "I don't understand meow~";
+    
+    if (responseText.length >= 2000) {
+      responseText = responseText.substring(0, 2000);
+    }
+
+    return responseText;
   } catch (error) {
     console.error("Gemini API Error:", error);
-    return "Error fetching AI response.";
+    return "⚠️ AI Error: Something went wrong meow.";
   }
 }
 
-function startBot() {
-  client.login(TOKEN);
-}
-
-// Start the bot when the module is imported
-startBot();
+// Start bot
+client.login(TOKEN);
