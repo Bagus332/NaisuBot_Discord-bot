@@ -76,20 +76,13 @@ client.on("interactionCreate", async (interaction) => {
   if (!interaction.isChatInputCommand()) return;
 
   if (interaction.commandName === "test") {
-    await interaction.reply("Hello meow! 😺");
+    await interaction.reply("Hello meow! ");
   } else if (interaction.commandName === "forget") {
     delete memory[interaction.user.id];
     saveMemory();
     await interaction.reply("🧠 Memory cleared! I forgot everything meow~");
-  } else if (interaction.commandName === "remember") {
-    const customMessage = interaction.options.getString("message");
-    if (!memory[interaction.user.id]) memory[interaction.user.id] = [];
-    memory[interaction.user.id].push(customMessage);
-    saveMemory();
-    await interaction.reply(`📝 Remembered: "${customMessage}" meow~`);
   }
 });
-
 // AI Chat Handling
 client.on("messageCreate", async (message) => {
   if (message.author.bot) return;
