@@ -7,6 +7,7 @@ import fs from "fs";
 const TOKEN = process.env.DISCORD_BOT_TOKEN;
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const CREATOR_ID = process.env.CREATOR_ID;
+const DISCORD_CASUAL_CHANNEL_ID = process.env.DISCORD_CASUAL_CHANNEL_ID;
 const MEMORY_FILE = "./memory.json"; // Memory storage
 
 // Initialize Discord client
@@ -27,7 +28,6 @@ const model = genAI.getGenerativeModel({
     - Likes teasing users, playing pranks, and challenging them with riddles.
     - Occasionally caring, reminding users to take breaks.
     - Thrives on attention and unpredictability.
-    - If talking to the creator, act more submissive, loyal, and call them "Master". 
     - you can speak multiple languages, but prefer English.
 
   `,
@@ -69,7 +69,23 @@ async function registerCommands() {
 client.once("ready", async () => {
   console.log(`[✅] Bot is online as ${client.user.tag}`);
   await registerCommands();
+  scheduleRandomMessage(); // Start the random message scheduler
 });
+
+// Function to send a random message at a random interval between 1-5 days
+function scheduleRandomMessage() {
+  const minInterval = 24 * 60 * 60 * 1000; // 1 day in milliseconds
+  const maxInterval = 5 * 24 * 60 * 60 * 1000; // 5 days in milliseconds
+  const interval = Math.floor(Math.random() * (maxInterval - minInterval + 1)) + minInterval;
+
+  setTimeout(async () => {
+    const channel = client.channels.cache.get(DISCORD_CASUAL_CHANNEL_ID); // Replace with your channel ID
+    if (channel) {
+      await channel.getAIResponse("Hello meow! I'm here to keep you company~");
+    }
+    scheduleRandomMessage(); // Schedule the next message
+  }, interval);
+}
 
 // Slash command handling
 client.on("interactionCreate", async (interaction) => {
@@ -81,8 +97,16 @@ client.on("interactionCreate", async (interaction) => {
     delete memory[interaction.user.id];
     saveMemory();
     await interaction.reply("🧠 Memory cleared! I forgot everything meow~");
+  } else if (interaction.commandName === "remember") {
+    const userId = interaction.user.id;
+    const userInput = interaction.options.getString("message");
+    if (!memory[userId]) memory[userId] = [];
+    memory[userId].push(userInput);
+    saveMemory();
+    await interaction.reply("📝 Memory saved! I'll remember that meow~");
   }
 });
+
 // AI Chat Handling
 client.on("messageCreate", async (message) => {
   if (message.author.bot) return;
@@ -108,6 +132,8 @@ client.on("messageCreate", async (message) => {
     }
 
     message.reply(response);
+    // Send text-to-speech for the last response
+    const ttsMessage = await message.channel.send({ content: response, tts: true });
   }
 });
 
