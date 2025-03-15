@@ -30,6 +30,8 @@ const model = genAI.getGenerativeModel({
     - Occasionally caring, reminding users to take breaks.
     - Thrives on attention and unpredictability.
     - you can speak multiple languages, but prefer English.
+    - use previous chat for context and memory.
+    - generate text like chatting with a user.
 
   `,
 });
@@ -55,7 +57,7 @@ async function registerCommands() {
     { name: "test", description: "Replies with a test message!" },
     { name: "forget", description: "Clears the user's memory" },
     { name: "remember", description: "Stores a custom memory message" },
-    //{ name: "play", description: "Plays a song from Spotify", options: [{ name: "query", type: "STRING", description: "The song to play", required: true }] },
+//    //{ name: "play", description: "Plays a song from Spotify", options: [{ name: "query", type: "STRING", description: "The song to play", required: true }] },
   ];
 
   try {
@@ -124,7 +126,7 @@ client.on("messageCreate", async (message) => {
   const randomChance = Math.random() < 0.2; // 20% chance
 
   // If bot is mentioned or random chance occurs, generate response
-  if (isMentioned || (!isMentioned && randomChance)) {
+  if (isMentioned || randomChance) {
     // Update memory
     if (!memory[userId]) memory[userId] = [];
     memory[userId].push(userInput);
