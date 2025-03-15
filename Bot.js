@@ -2,6 +2,7 @@ import { Client, GatewayIntentBits, REST, Routes } from "discord.js";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import "dotenv/config";
 import fs from "fs";
+import { playMusic } from "./music.js"; // Import the playMusic function
 
 // Load environment variables
 const TOKEN = process.env.DISCORD_BOT_TOKEN;
@@ -12,7 +13,7 @@ const MEMORY_FILE = "./memory.json"; // Memory storage
 
 // Initialize Discord client
 const client = new Client({
-  intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent],
+  intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent, GatewayIntentBits.GuildVoiceStates],
 });
 
 // Initialize Gemini AI
@@ -53,7 +54,8 @@ async function registerCommands() {
   const commands = [
     { name: "test", description: "Replies with a test message!" },
     { name: "forget", description: "Clears the user's memory" },
-    { name: "remember", description: "Stores a custom memory message" }, // New command
+    { name: "remember", description: "Stores a custom memory message" },
+    { name: "play", description: "Plays a song from Spotify", options: [{ name: "query", type: "STRING", description: "The song to play", required: true }] },
   ];
 
   try {
@@ -104,6 +106,9 @@ client.on("interactionCreate", async (interaction) => {
     memory[userId].push(userInput);
     saveMemory();
     await interaction.reply("📝 Memory saved! I'll remember that meow~");
+  } else if (interaction.commandName === "play") {
+    const query = interaction.options.getString("query");
+    await playMusic(interaction, query);
   }
 });
 
@@ -145,7 +150,6 @@ async function getAIResponse(userId, input, isCreator) {
   try {
     const history = memory[userId] ? memory[userId].join("\n") : "";
     let prompt = `Previous chat:\n${history}\nUser: ${input}\nAI:`;
-    
 
     // Special personality for the creator
     if (isCreator) {
@@ -167,7 +171,7 @@ async function getAIResponse(userId, input, isCreator) {
     });
 
     let responseText = result?.response?.candidates?.[0]?.content?.parts?.[0]?.text || "I don't understand meow~";
-    
+
     if (responseText.length >= 2000) {
       responseText = responseText.substring(0, 2000);
     }
