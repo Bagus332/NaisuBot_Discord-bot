@@ -115,16 +115,19 @@ client.on("messageCreate", async (message) => {
   const userInput = message.content.trim();
   const isMentioned = message.mentions.has(client.user);
 
-  // Update memory
-  if (!memory[userId]) memory[userId] = [];
-  memory[userId].push(userInput);
-  if (memory[userId].length > 50) memory[userId].shift(); // Keep only last 50 messages
-  saveMemory();
+  // Random chance for the bot to join the chat without being tagged
+  const randomChance = Math.random() < 0.1; // 10% chance
 
-  // If bot is mentioned, generate response
-  if (isMentioned) {
+  // If bot is mentioned or random chance occurs, generate response
+  if (isMentioned || randomChance) {
+    // Update memory
+    if (!memory[userId]) memory[userId] = [];
+    memory[userId].push(userInput);
+    if (memory[userId].length > 50) memory[userId].shift(); // Keep only last 50 messages
+    saveMemory();
+
     let response;
-    
+
     if (userId === CREATOR_ID) {
       response = await getAIResponse(userId, userInput, true); // Special mode for creator
     } else {
