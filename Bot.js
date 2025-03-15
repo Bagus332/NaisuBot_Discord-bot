@@ -55,7 +55,7 @@ async function registerCommands() {
     { name: "test", description: "Replies with a test message!" },
     { name: "forget", description: "Clears the user's memory" },
     { name: "remember", description: "Stores a custom memory message" },
-    { name: "play", description: "Plays a song from Spotify", options: [{ name: "query", type: "STRING", description: "The song to play", required: true }] },
+    //{ name: "play", description: "Plays a song from Spotify", options: [{ name: "query", type: "STRING", description: "The song to play", required: true }] },
   ];
 
   try {
@@ -121,10 +121,10 @@ client.on("messageCreate", async (message) => {
   const isMentioned = message.mentions.has(client.user);
 
   // Random chance for the bot to join the chat without being tagged
-  const randomChance = Math.random() < 0.1; // 10% chance
+  const randomChance = Math.random() < 0.2; // 20% chance
 
   // If bot is mentioned or random chance occurs, generate response
-  if (isMentioned || randomChance) {
+  if (isMentioned || (!isMentioned && randomChance)) {
     // Update memory
     if (!memory[userId]) memory[userId] = [];
     memory[userId].push(userInput);
@@ -139,9 +139,7 @@ client.on("messageCreate", async (message) => {
       response = await getAIResponse(userId, userInput, false);
     }
 
-    message.reply(response);
-    // Send text-to-speech for the last response
-    const ttsMessage = await message.channel.send({ content: response, tts: true });
+    message.channel.send(response);
   }
 });
 

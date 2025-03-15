@@ -1,9 +1,6 @@
 import SpotifyWebApi from 'spotify-web-api-node';
-import { joinVoiceChannel, createAudioPlayer, createAudioResource, AudioPlayerStatus, VoiceConnectionStatus, getVoiceConnection } from '@discordjs/voice';
-import { Client, GatewayIntentBits } from 'discord.js';
+import { Client, GatewayIntentBits,} from 'discord.js';
 import 'dotenv/config';
-import ytdl from 'ytdl-core';
-import EventEmitter from 'events';
 
 const client = new Client({
   intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildVoiceStates, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent],
