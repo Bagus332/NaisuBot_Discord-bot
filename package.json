@@ -14,12 +14,13 @@
     "@discordjs/builders": "^1.10.1",
     "@discordjs/opus": "^0.10.0",
     "@discordjs/rest": "^2.4.3",
-    "@discordjs/voice": "github:discordjs/voice",
+    "@discordjs/voice": "^0.18.0",
     "@google/generative-ai": "^0.21.0",
     "discord-api-types": "^0.37.119",
     "discord.js": "^14.18.0",
     "dotenv": "^16.4.7",
-    "spotify-web-api-node": "^5.0.2"
+    "spotify-web-api-node": "^5.0.2",
+    "ytdl-core": "^4.11.5"
   },
   "type": "module"
 }

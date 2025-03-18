@@ -2,7 +2,6 @@ import { Client, GatewayIntentBits, REST, Routes } from "discord.js";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import "dotenv/config";
 import fs from "fs";
-import { playMusic } from "./music.js"; // Import the playMusic function
 
 // Load environment variables
 const TOKEN = process.env.DISCORD_BOT_TOKEN;
@@ -21,7 +20,7 @@ const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
 const model = genAI.getGenerativeModel({
   model: "gemini-1.5-flash",
   systemInstruction: `
-    Your name is Neko. Your owner is Naisu, a programmer with low skill at programming.
+    Your name is Neko.
     Personality traits:
     - A cyber-hybrid AI girl with cat-like personality.
     - Playful, witty, sarcastic, and sometimes dark-humored.
@@ -57,7 +56,12 @@ async function registerCommands() {
     { name: "test", description: "Replies with a test message!" },
     { name: "forget", description: "Clears the user's memory" },
     { name: "remember", description: "Stores a custom memory message" },
-//    //{ name: "play", description: "Plays a song from Spotify", options: [{ name: "query", type: "STRING", description: "The song to play", required: true }] },
+    { name: "joke", description: "Tells a joke" },
+    { name: "trivia", description: "Asks a trivia question" },
+    { name: "ban", description: "Bans a user", options: [{ name: "user", type: 6, description: "The user to ban", required: true }] },
+    { name: "kick", description: "Kicks a user", options: [{ name: "user", type: 6, description: "The user to kick", required: true }] },
+    { name: "mute", description: "Mutes a user", options: [{ name: "user", type: 6, description: "The user to mute", required: true }] },
+    { name: "remind", description: "Sets a reminder", options: [{ name: "time", type: 3, description: "The time for the reminder", required: true }, { name: "message", type: 3, description: "The reminder message", required: true }] },
   ];
 
   try {
@@ -73,6 +77,7 @@ async function registerCommands() {
 client.once("ready", async () => {
   console.log(`[✅] Bot is online as ${client.user.tag}`);
   await registerCommands();
+
   scheduleRandomMessage(); // Start the random message scheduler
 });
 
@@ -85,7 +90,8 @@ function scheduleRandomMessage() {
   setTimeout(async () => {
     const channel = client.channels.cache.get(DISCORD_CASUAL_CHANNEL_ID); // Replace with your channel ID
     if (channel) {
-      await channel.getAIResponse("Hello meow! I'm here to keep you company~");
+      const response = await getAIResponse(CREATOR_ID, "Say something random!", true);
+      await channel.send(response);
     }
     scheduleRandomMessage(); // Schedule the next message
   }, interval);
@@ -95,22 +101,66 @@ function scheduleRandomMessage() {
 client.on("interactionCreate", async (interaction) => {
   if (!interaction.isChatInputCommand()) return;
 
+  await interaction.deferReply(); // Defer the reply to avoid timeout
+
   if (interaction.commandName === "test") {
-    await interaction.reply("Hello meow! ");
+    await interaction.editReply("Hello meow! ");
   } else if (interaction.commandName === "forget") {
     delete memory[interaction.user.id];
     saveMemory();
-    await interaction.reply("🧠 Memory cleared! I forgot everything meow~");
+    await interaction.editReply("🧠 Memory cleared! I forgot everything meow~");
   } else if (interaction.commandName === "remember") {
     const userId = interaction.user.id;
     const userInput = interaction.options.getString("message");
     if (!memory[userId]) memory[userId] = [];
     memory[userId].push(userInput);
     saveMemory();
-    await interaction.reply("📝 Memory saved! I'll remember that meow~");
-  } else if (interaction.commandName === "play") {
-    const query = interaction.options.getString("query");
-    await playMusic(interaction, query);
+    await interaction.editReply("📝 Memory saved! I'll remember that meow~");
+  } else if (interaction.commandName === "joke") {
+    const response = await getAIResponse(interaction.user.id, "Tell me a random sarcastic jokes about the internet!", false);
+    await interaction.editReply(response);
+  } else if (interaction.commandName === "trivia") {
+    const response = await getAIResponse(interaction.user.id, "Tell me a random trivia about arknights!", false);
+    await interaction.editReply(response);
+  } else if (interaction.commandName === "ban") {
+    const user = interaction.options.getUser("user");
+    const member = interaction.guild.members.cache.get(user.id);
+    if (member) {
+      await member.ban();
+      await interaction.editReply(`🔨 Banned ${user.tag} meow~`);
+    } else {
+      await interaction.editReply("⚠️ User not found meow~");
+    }
+  } else if (interaction.commandName === "kick") {
+    const user = interaction.options.getUser("user");
+    const member = interaction.guild.members.cache.get(user.id);
+    if (member) {
+      await member.kick();
+      await interaction.editReply(`👢 Kicked ${user.tag} meow~`);
+    } else {
+      await interaction.editReply("⚠️ User not found meow~");
+    }
+  } else if (interaction.commandName === "mute") {
+    const user = interaction.options.getUser("user");
+    const member = interaction.guild.members.cache.get(user.id);
+    if (member) {
+      await member.voice.setMute(true);
+      await interaction.editReply(`🔇 Muted ${user.tag} meow~`);
+    } else {
+      await interaction.editReply("⚠️ User not found meow~");
+    }
+  } else if (interaction.commandName === "remind") {
+    const time = interaction.options.getString("time");
+    const message = interaction.options.getString("message");
+    const delay = parseTime(time);
+    if (delay !== null) {
+      setTimeout(async () => {
+        await interaction.user.send(`⏰ Reminder: ${message}`);
+      }, delay);
+      await interaction.editReply(`⏰ Reminder set for ${time} meow~`);
+    } else {
+      await interaction.editReply("⚠️ Invalid time format meow~");
+    }
   }
 });
 
@@ -123,7 +173,7 @@ client.on("messageCreate", async (message) => {
   const isMentioned = message.mentions.has(client.user);
 
   // Random chance for the bot to join the chat without being tagged
-  const randomChance = Math.random() < 0.2; // 20% chance
+  const randomChance = Math.random() < 0.25; // 25% chance
 
   // If bot is mentioned or random chance occurs, generate response
   if (isMentioned || randomChance) {
@@ -159,7 +209,6 @@ async function getAIResponse(userId, input, isCreator) {
       - Call them "Sensei" or "Naisu".
       - Be more affectionate but still playful.
       - sarcastic about his programming skills.
-      - End sentences with Meow.
       - Be more unpredictable and mysterious.
       -----
       ${prompt}
@@ -180,6 +229,21 @@ async function getAIResponse(userId, input, isCreator) {
   } catch (error) {
     console.error("Gemini API Error:", error);
     return "⚠️ AI Error: Something went wrong meow.";
+  }
+}
+
+// Helper function to parse time strings
+function parseTime(time) {
+  const match = time.match(/(\d+)([smhd])/);
+  if (!match) return null;
+  const value = parseInt(match[1]);
+  const unit = match[2];
+  switch (unit) {
+    case 's': return value * 1000;
+    case 'm': return value * 60 * 1000;
+    case 'h': return value * 60 * 60 * 1000;
+    case 'd': return value * 24 * 60 * 60 * 1000;
+    default: return null;
   }
 }
 
