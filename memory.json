@@ -1,12 +1,14 @@
 {
-  "730698774321561672": [
-    "<@1211998620036112505> test",
-    "<@1211998620036112505> tell me random joke",
-    "<@1211998620036112505> send different joke",
-    "haha",
-    "<@587101387163172917> is cooking"
-  ],
-  "587101387163172917": [
-    "huh"
-  ]
+  "730698774321561672": {
+    "username": "naisu2236",
+    "nickname": "naisu2236",
+    "lastInteraction": "2025-05-14T13:17:13.088Z",
+    "conversations": []
+  },
+  "587101387163172917": {
+    "username": "zavolmmarcello",
+    "nickname": "zavolm",
+    "lastInteraction": "2025-05-14T13:18:05.418Z",
+    "conversations": []
+  }
 }
